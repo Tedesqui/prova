@@ -3,35 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Correção de Provas AR + OCR + ChatGPT</title>
+  <title>Correção de Provas com Confirmação</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.1/dist/tesseract.min.js"></script>
   <style>
     body, html {
-      margin: 0; padding: 0; font-family: sans-serif;
+      margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: black; color: white; overflow: hidden;
     }
     video, canvas {
       position: absolute; top: 0; left: 0;
       width: 100vw; height: 100vh; object-fit: cover; z-index: 0;
     }
-    #output {
-      position: fixed; bottom: 40px; /* Ajustado para não sobrepor os botões */
-      width: 100%; background: rgba(0,0,0,0.8);
-      padding: 10px; font-size: 16px; z-index: 2;
-      max-height: 40vh; overflow-y: auto; box-sizing: border-box;
+    #output-container {
+      position: fixed; bottom: 0; left: 0;
+      width: 100%; background: rgba(0,0,0,0.85);
+      padding: 15px; font-size: 16px; z-index: 2;
+      max-height: 80vh; overflow-y: auto; box-sizing: border-box;
+      border-top: 1px solid #444;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
     #controls {
-      position: fixed; bottom: 10px; left: 50%;
+      position: fixed; bottom: 15px; left: 50%;
       transform: translateX(-50%); z-index: 3;
       display: flex; gap: 10px;
     }
     button {
-      font-size: 16px; padding: 10px 16px;
+      font-size: 16px; padding: 12px 18px;
       background: #0d6efd; border: none;
       border-radius: 8px; color: white; cursor: pointer;
+      transition: background-color 0.2s;
     }
-    button:hover { background: #0056b3; }
-    button:disabled { background: #555; cursor: not-allowed; }
+    button:hover { background: #0a58ca; }
+    button:disabled { background: #555; cursor: not-allowed; opacity: 0.7; }
+    
+    /* Estilos para a tela de confirmação */
+    #confirmation-view {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    #confirmation-view p {
+        margin: 0;
+        font-size: 0.9em;
+        color: #ccc;
+    }
+    textarea {
+        width: 100%;
+        min-height: 100px;
+        background: #222;
+        border: 1px solid #555;
+        border-radius: 8px;
+        color: white;
+        font-size: 1em;
+        padding: 10px;
+        box-sizing: border-box;
+        resize: vertical;
+    }
+    #confirmation-controls {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    #confirmation-controls button {
+        background-color: #198754; /* Verde para enviar */
+    }
+    #confirmation-controls button.secondary {
+        background-color: #6c757d; /* Cinza para tentar novamente */
+    }
   </style>
 </head>
 <body>
@@ -41,16 +81,20 @@
 
 <div id="controls">
   <button id="zoomBtn">🔍 Zoom: 1x</button>
-  <button id="captureBtn">📷 Corrigir</button>
+  <button id="captureBtn">📷 Ler Texto</button>
 </div>
 
-<div id="output">📷 Aponte a câmara para a resposta da prova e toque em "Corrigir"</div>
+<div id="output-container">
+    <div id="status-text">📷 Aponte a câmara para a resposta e toque em "Ler Texto"</div>
+</div>
 
 <script>
   const video = document.getElementById("video");
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
-  const output = document.getElementById("output");
+  const outputContainer = document.getElementById("output-container");
+  const statusText = document.getElementById("status-text");
+  const controlsDiv = document.getElementById("controls");
   const zoomBtn = document.getElementById("zoomBtn");
   const captureBtn = document.getElementById("captureBtn");
 
@@ -77,7 +121,7 @@
       }
     } catch (err) {
       console.error("Erro ao iniciar a câmara:", err);
-      output.innerText = "❌ Erro ao aceder à câmara. Verifique as permissões.";
+      statusText.innerHTML = "❌ Erro ao aceder à câmara. Verifique as permissões.";
     }
   }
 
@@ -94,51 +138,97 @@
     zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`;
   }
 
-  async function captureAndAnalyze() {
+  function showConfirmationView(text) {
+    controlsDiv.style.display = 'none'; // Esconde os controles da câmera
+    statusText.style.display = 'none'; // Esconde o texto de status inicial
+
+    const confirmationHTML = `
+        <div id="confirmation-view">
+            <p>Texto reconhecido (edite se necessário):</p>
+            <textarea id="ocr-text-area">${text}</textarea>
+            <div id="confirmation-controls">
+                <button id="retryBtn" class="secondary">Tentar Novamente</button>
+                <button id="sendBtn">Enviar para Correção</button>
+            </div>
+        </div>
+    `;
+    outputContainer.innerHTML = confirmationHTML;
+
+    document.getElementById('retryBtn').addEventListener('click', resetUI);
+    document.getElementById('sendBtn').addEventListener('click', sendForCorrection);
+  }
+
+  function resetUI() {
+    outputContainer.innerHTML = ''; // Limpa a área de confirmação
+    const newStatusText = document.createElement('div');
+    newStatusText.id = 'status-text';
+    newStatusText.innerText = '📷 Aponte a câmara para a resposta e toque em "Ler Texto"';
+    outputContainer.appendChild(newStatusText);
+    
+    controlsDiv.style.display = 'flex';
+    captureBtn.disabled = false;
+  }
+  
+  async function sendForCorrection() {
+      const correctedText = document.getElementById('ocr-text-area').value;
+      outputContainer.innerHTML = `<div id="status-text">🤖 A enviar para IA...</div>`;
+
+      try {
+        const response = await fetch("/api/corrigir", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto: correctedText })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erro do servidor: ${response.status}`);
+        }
+
+        const data = await response.json();
+        outputContainer.innerHTML = `<div id="status-text">✅ <strong>Correção:</strong><br><br>${data.resultado.replace(/\n/g, '<br>')}</div>`;
+
+      } catch (err) {
+        console.error("Erro na análise:", err);
+        outputContainer.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`;
+      } finally {
+        // Após mostrar o resultado, mostra um botão para reiniciar
+        const restartBtn = document.createElement('button');
+        restartBtn.innerText = 'Corrigir Outra Resposta';
+        restartBtn.style.marginTop = '15px';
+        restartBtn.addEventListener('click', resetUI);
+        outputContainer.appendChild(restartBtn);
+      }
+  }
+
+  async function captureAndRecognize() {
     captureBtn.disabled = true;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    output.innerText = "🧠 A ler resposta com OCR...";
+    statusText.innerText = "🧠 A ler resposta com OCR...";
 
     try {
       const { data: { text } } = await Tesseract.recognize(canvas, 'por', {
         logger: m => {
           if (m.status === 'recognizing text') {
-            output.innerText = `🧠 A ler... (${Math.round(m.progress * 100)}%)`;
+            statusText.innerText = `🧠 A ler... (${Math.round(m.progress * 100)}%)`;
           }
         }
       });
 
-      output.innerText = `🔎 Texto detetado:\n"${text.trim()}"\n\nA enviar para IA...`;
-
-      // **MUDANÇA IMPORTANTE:** A chamada agora é para o nosso próprio backend.
-      // A Vercel irá redirecionar esta chamada para o ficheiro /api/corrigir.js
-      const response = await fetch("/api/corrigir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: text })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erro do servidor: ${response.status}`);
-      }
-
-      const data = await response.json();
-      output.innerText = `✅ Correção:\n\n${data.resultado}`;
+      showConfirmationView(text.trim());
 
     } catch (err) {
-      console.error("Erro na análise:", err);
-      output.innerText = `❌ Erro: ${err.message}`;
-    } finally {
+      console.error("Erro no OCR:", err);
+      statusText.innerText = `❌ Erro ao ler o texto: ${err.message}`;
       captureBtn.disabled = false;
     }
   }
 
   zoomBtn.addEventListener('click', toggleZoom);
-  captureBtn.addEventListener('click', captureAndAnalyze);
+  captureBtn.addEventListener('click', captureAndRecognize);
 
   startCamera();
 </script>
