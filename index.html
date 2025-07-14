@@ -99,7 +99,7 @@
 </div>
 
 <div id="output-container">
-    <div id="status-text">📷 Aponte a câmara para a resposta e toque em "Ler Texto"</div>
+    <div id="status-text">📷 Aponte a câmera para a resposta e toque em "Ler Texto"</div>
 </div>
 
 <script>
@@ -135,7 +135,7 @@
       }
     } catch (err) {
       console.error("Erro ao iniciar a câmara:", err);
-      statusTextContainer.innerHTML = "❌ Erro ao aceder à câmara. Verifique as permissões.";
+      statusTextContainer.innerHTML = "❌ Erro ao aceder à câmera. Verifique as permissões.";
     }
   }
 
@@ -174,14 +174,14 @@
   function resetUI() {
     canvas.style.display = 'none';
     video.style.display = 'block';
-    outputContainer.innerHTML = `<div id="status-text">📷 Aponte a câmara para a resposta e toque em "Ler Texto"</div>`;
+    outputContainer.innerHTML = `<div id="status-text">📷 Aponte a câmera para a resposta e toque em "Ler Texto"</div>`;
     controlsDiv.style.display = 'flex';
     captureBtn.disabled = false;
   }
   
   async function sendForCorrection() {
       const correctedText = document.getElementById('ocr-text-area').value;
-      outputContainer.innerHTML = `<div id="status-text">🤖 A enviar para IA...</div>`;
+      outputContainer.innerHTML = `<div id="status-text">🤖 A enviar para a IA...</div>`;
 
       try {
         const response = await fetch("/api/corrigir", {
@@ -220,7 +220,7 @@
     video.style.display = 'none';
     canvas.style.display = 'block';
 
-    outputContainer.innerHTML = `<div id="status-text">☁️ Enviando imagem para análise com AWS Textract...</div>`;
+    outputContainer.innerHTML = `<div id="status-text">☁️ 🧠 Lendo o texto...</div>`;
 
     try {
       // Converte a imagem do canvas para o formato Base64 para ser enviada
