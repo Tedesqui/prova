@@ -36,11 +36,13 @@
       display: flex; gap: 10px;
     }
     button {
-      font-size: 16px; padding: 12px 18px;
-      background: #0d6efd; border: none;
-      border-radius: 2; /* BOTÕES EM FORMATO DE RETÂNGULO */
-      color: white; cursor: pointer;
-      transition: background-color 0.2s;
+            flex-grow: 1;
+            padding: 12px 8px; 
+            font-size: 13px;
+            font-weight: bold; background-color: var(--replicate-black);
+            color: white; border: 1px solid #444; border-radius: var(--border-radius);
+            cursor: pointer; transition: background-color 0.3s, transform 0.1s, opacity 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
     }
     button:hover { background: #0a58ca; }
     button:disabled { background: #555; cursor: not-allowed; opacity: 0.7; }
