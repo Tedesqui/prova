@@ -14,6 +14,10 @@
       position: absolute; top: 0; left: 0;
       width: 100vw; height: 100vh; object-fit: cover; z-index: 0;
     }
+    /* O canvas começa escondido e será exibido após a captura */
+    canvas {
+      display: none;
+    }
     #output-container {
       position: fixed; bottom: 0; left: 0;
       width: 100%; background: rgba(0,0,0,0.85);
@@ -25,7 +29,9 @@
       gap: 10px;
     }
     #controls {
-      position: fixed; bottom: 15px; left: 50%;
+      position: fixed; 
+      bottom: 65px; /* Posição ajustada: 15px + 50px */
+      left: 50%;
       transform: translateX(-50%); z-index: 3;
       display: flex; gap: 10px;
     }
@@ -77,7 +83,7 @@
 <body>
 
 <video id="video" autoplay playsinline muted></video>
-<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+<canvas id="canvas"></canvas>
 
 <div id="controls">
   <button id="zoomBtn">🔍 Zoom: 1x</button>
@@ -93,7 +99,7 @@
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const outputContainer = document.getElementById("output-container");
-  const statusText = document.getElementById("status-text");
+  const statusTextContainer = document.getElementById("status-text"); // Renomeado para clareza
   const controlsDiv = document.getElementById("controls");
   const zoomBtn = document.getElementById("zoomBtn");
   const captureBtn = document.getElementById("captureBtn");
@@ -121,7 +127,7 @@
       }
     } catch (err) {
       console.error("Erro ao iniciar a câmara:", err);
-      statusText.innerHTML = "❌ Erro ao aceder à câmara. Verifique as permissões.";
+      statusTextContainer.innerHTML = "❌ Erro ao aceder à câmara. Verifique as permissões.";
     }
   }
 
@@ -140,8 +146,7 @@
 
   function showConfirmationView(text) {
     controlsDiv.style.display = 'none'; // Esconde os controles da câmera
-    statusText.style.display = 'none'; // Esconde o texto de status inicial
-
+    
     const confirmationHTML = `
         <div id="confirmation-view">
             <p>Texto reconhecido (edite se necessário):</p>
@@ -159,11 +164,11 @@
   }
 
   function resetUI() {
-    outputContainer.innerHTML = ''; // Limpa a área de confirmação
-    const newStatusText = document.createElement('div');
-    newStatusText.id = 'status-text';
-    newStatusText.innerText = '📷 Aponte a câmara para a resposta e toque em "Ler Texto"';
-    outputContainer.appendChild(newStatusText);
+    // Esconde a foto e volta para o vídeo ao vivo
+    canvas.style.display = 'none';
+    video.style.display = 'block';
+
+    outputContainer.innerHTML = `<div id="status-text">📷 Aponte a câmara para a resposta e toque em "Ler Texto"</div>`;
     
     controlsDiv.style.display = 'flex';
     captureBtn.disabled = false;
@@ -203,16 +208,25 @@
 
   async function captureAndRecognize() {
     captureBtn.disabled = true;
+    
+    // Define o tamanho do canvas para o mesmo do vídeo
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    
+    // Tira a "foto" e desenha no canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    statusText.innerText = "🧠 A ler resposta com OCR...";
+    // Esconde o vídeo e mostra a foto (o canvas)
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+
+    outputContainer.innerHTML = `<div id="status-text">🧠 A ler resposta com OCR...</div>`;
 
     try {
       const { data: { text } } = await Tesseract.recognize(canvas, 'por', {
         logger: m => {
-          if (m.status === 'recognizing text') {
+          const statusText = document.querySelector('#status-text');
+          if (statusText && m.status === 'recognizing text') {
             statusText.innerText = `🧠 A ler... (${Math.round(m.progress * 100)}%)`;
           }
         }
@@ -222,8 +236,13 @@
 
     } catch (err) {
       console.error("Erro no OCR:", err);
-      statusText.innerText = `❌ Erro ao ler o texto: ${err.message}`;
-      captureBtn.disabled = false;
+      outputContainer.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`;
+      // Adiciona um botão para tentar novamente em caso de erro
+      const retryBtn = document.createElement('button');
+      retryBtn.innerText = 'Tentar Novamente';
+      retryBtn.style.marginTop = '15px';
+      retryBtn.addEventListener('click', resetUI);
+      outputContainer.appendChild(retryBtn);
     }
   }
 
