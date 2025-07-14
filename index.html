@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Correção de Provas com Confirmação</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.1/dist/tesseract.min.js"></script>
+  <title>Correção de Provas com AWS Textract</title>
+  <!-- O SCRIPT DO TESSERACT.JS FOI REMOVIDO -->
   <style>
     body, html {
       margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -38,7 +38,8 @@
     button {
       font-size: 16px; padding: 12px 18px;
       background: #0d6efd; border: none;
-      border-radius: 8px; color: white; cursor: pointer;
+      border-radius: 0; /* BOTÕES EM FORMATO DE RETÂNGULO */
+      color: white; cursor: pointer;
       transition: background-color 0.2s;
     }
     button:hover { background: #0a58ca; }
@@ -60,7 +61,7 @@
         min-height: 100px;
         background: #222;
         border: 1px solid #555;
-        border-radius: 8px;
+        border-radius: 4px; /* Raio pequeno para consistência */
         color: white;
         font-size: 1em;
         padding: 10px;
@@ -99,7 +100,7 @@
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const outputContainer = document.getElementById("output-container");
-  const statusTextContainer = document.getElementById("status-text"); // Renomeado para clareza
+  const statusTextContainer = document.getElementById("status-text");
   const controlsDiv = document.getElementById("controls");
   const zoomBtn = document.getElementById("zoomBtn");
   const captureBtn = document.getElementById("captureBtn");
@@ -145,7 +146,7 @@
   }
 
   function showConfirmationView(text) {
-    controlsDiv.style.display = 'none'; // Esconde os controles da câmera
+    controlsDiv.style.display = 'none';
     
     const confirmationHTML = `
         <div id="confirmation-view">
@@ -164,12 +165,9 @@
   }
 
   function resetUI() {
-    // Esconde a foto e volta para o vídeo ao vivo
     canvas.style.display = 'none';
     video.style.display = 'block';
-
     outputContainer.innerHTML = `<div id="status-text">📷 Aponte a câmara para a resposta e toque em "Ler Texto"</div>`;
-    
     controlsDiv.style.display = 'flex';
     captureBtn.disabled = false;
   }
@@ -197,7 +195,6 @@
         console.error("Erro na análise:", err);
         outputContainer.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`;
       } finally {
-        // Após mostrar o resultado, mostra um botão para reiniciar
         const restartBtn = document.createElement('button');
         restartBtn.innerText = 'Corrigir Outra Resposta';
         restartBtn.style.marginTop = '15px';
@@ -209,35 +206,40 @@
   async function captureAndRecognize() {
     captureBtn.disabled = true;
     
-    // Define o tamanho do canvas para o mesmo do vídeo
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
-    // Tira a "foto" e desenha no canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Esconde o vídeo e mostra a foto (o canvas)
     video.style.display = 'none';
     canvas.style.display = 'block';
 
-    outputContainer.innerHTML = `<div id="status-text">🧠 A ler resposta com OCR...</div>`;
+    outputContainer.innerHTML = `<div id="status-text">☁️ Enviando imagem para análise com AWS Textract...</div>`;
 
     try {
-      const { data: { text } } = await Tesseract.recognize(canvas, 'por', {
-        logger: m => {
-          const statusText = document.querySelector('#status-text');
-          if (statusText && m.status === 'recognizing text') {
-            statusText.innerText = `🧠 A ler... (${Math.round(m.progress * 100)}%)`;
-          }
-        }
+      // Converte a imagem do canvas para o formato Base64 para ser enviada
+      const imageDataUrl = canvas.toDataURL('image/jpeg');
+
+      // **MUDANÇA IMPORTANTE:** A chamada agora é para um backend que usa AWS Textract.
+      // Você precisa criar este endpoint (/api/read-text-aws) no seu servidor.
+      const response = await fetch("/api/read-text-aws", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Envia a imagem em formato Base64 no corpo da requisição
+        body: JSON.stringify({ image: imageDataUrl })
       });
 
-      showConfirmationView(text.trim());
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erro do servidor: ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Espera-se que o backend retorne um JSON com a chave "text"
+      showConfirmationView(data.text.trim());
 
     } catch (err) {
-      console.error("Erro no OCR:", err);
+      console.error("Erro no reconhecimento:", err);
       outputContainer.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`;
-      // Adiciona um botão para tentar novamente em caso de erro
       const retryBtn = document.createElement('button');
       retryBtn.innerText = 'Tentar Novamente';
       retryBtn.style.marginTop = '15px';
