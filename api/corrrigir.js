@@ -1,70 +1,58 @@
-/*
- * FICHEIRO: /api/corrigir.js
- *
- * DESCRIÇÃO:
- * Este é o endpoint que recebe o texto (já extraído pelo Textract),
- * envia-o para a API da OpenAI (modelo gpt-4o) para correção
- * e devolve o resultado.
- *
- * COMO CONFIGURAR:
- * 1. Crie uma chave de API na sua conta da OpenAI.
- * 2. Configure a sua variável de ambiente na sua plataforma de alojamento:
- * - OPENAI_API_KEY: A sua chave de API da OpenAI.
- */
-export async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Método não permitido' });
+// Importa a biblioteca da OpenAI
+import OpenAI from 'openai';
+
+// Inicializa o cliente da OpenAI com a chave de API que estará nas "Environment Variables" da Vercel
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// A função handler é o padrão da Vercel para uma função serverless
+export default async function handler(req, res) {
+  // Garante que a requisição seja do tipo POST
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+
+  try {
+    const { pergunta, resposta } = req.body;
+
+    if (!pergunta || !resposta) {
+      return res.status(400).json({ error: 'Os campos "pergunta" e "resposta" são obrigatórios.' });
     }
 
-    try {
-        const { texto } = req.body;
-        if (!texto) {
-            return res.status(400).json({ error: 'Nenhum texto fornecido.' });
-        }
+    const systemMessage = `
+      Você é um avaliador especialista e um professor didático.
+      Sua função é analisar uma resposta de aluno com base em uma pergunta fornecida, usando seu vasto conhecimento geral para julgar a correção.
+      Siga estas regras:
+      1. Avalie a precisão e a completude da resposta.
+      2. Forneça um feedback construtivo, explicando os pontos corretos e incorretos.
+      3. Se a resposta estiver errada ou incompleta, forneça a informação correta.
+      4. No final, em uma nova linha, escreva "Nota:" seguido de uma nota de 0 a 10.
+    `;
 
-        const apiKey = process.env.OPENAI_API_KEY;
-        const apiUrl = 'https://api.openai.com/v1/chat/completions';
+    const userMessage = `
+      Pergunta: "${pergunta}"
+      Resposta do Aluno: "${resposta}"
+      Por favor, avalie esta resposta.
+    `;
 
-        const payload = {
-            model: "gpt-4o", // Pode usar outros modelos como "gpt-3.5-turbo"
-            messages: [
-                {
-                    // A mensagem do sistema define o comportamento da IA
-                    role: "system",
-                    content: `Você é um assistente de correção de provas. Analise a resposta de um aluno. Forneça uma correção clara e construtiva. Se a resposta estiver correta, elogie o aluno. Se estiver incorreta ou incompleta, explique o que está errado e qual seria a resposta correta. Seja objetivo e educado.`
-                },
-                {
-                    // A mensagem do utilizador contém o texto a ser analisado
-                    role: "user",
-                    content: `Por favor, corrija a seguinte resposta: "${texto}"`
-                }
-            ]
-        };
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: userMessage }
+      ],
+      temperature: 0.3,
+    });
 
-        const apiResponse = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}` // Autenticação da OpenAI
-            },
-            body: JSON.stringify(payload),
-        });
+    const correcaoCompleta = completion.choices[0].message.content;
 
-        if (!apiResponse.ok) {
-            const errorBody = await apiResponse.json();
-            console.error("Erro da API da OpenAI:", errorBody);
-            throw new Error(errorBody.error.message || 'A API da OpenAI não conseguiu processar o pedido.');
-        }
+    // Retorna a resposta com sucesso
+    return res.status(200).json({ resultado: correcaoCompleta });
 
-        const responseData = await apiResponse.json();
-        
-        // Extrai o texto da resposta da IA
-        const resultado = responseData.choices[0].message.content;
-
-        res.status(200).json({ resultado });
-
-    } catch (error) {
-        console.error('Erro no endpoint de correção:', error);
-        res.status(500).json({ error: 'Falha ao obter a correção da IA.' });
-    }
+  } catch (error) {
+    console.error('Erro na API da OpenAI:', error);
+    return res.status(500).json({ error: 'Ocorreu um erro ao se comunicar com a IA.' });
+  }
 }
