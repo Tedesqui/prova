@@ -11,34 +11,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- MUDANÇA AQUI: Voltamos a esperar "pergunta" e "resposta" ---
-    const { pergunta, resposta } = req.body;
+    const { texto } = req.body;
 
-    // Validação para os dois campos
-    if (!pergunta || !resposta) {
-      return res.status(400).json({ error: 'Os campos "pergunta" e "resposta" são obrigatórios.' });
+    if (!texto || texto.trim() === '') {
+      return res.status(400).json({ error: 'O campo "texto" não pode estar vazio.' });
     }
 
-    // --- PROMPT DE CORREÇÃO DE PROVA ---
-    // Instruímos a IA a comparar a resposta com a pergunta.
+    // --- PROMPT ATUALIZADO ---
     const systemMessage = `
-      Você é um professor assistente especialista em avaliação de provas.
-      Sua função é analisar a resposta de um aluno com base na pergunta fornecida.
-      
-      Siga estas regras na sua correção:
-      1. Compare a resposta do aluno com o que era esperado pela pergunta.
-      2. Aponte os acertos e os erros de forma clara e construtiva.
-      3. Forneça a informação correta caso a resposta esteja errada ou incompleta.
-      4. No final, em uma nova linha, escreva "Nota:" seguido de uma nota de 0 a 10, que reflita o quão bem a resposta atende à pergunta.
-    `;
+      Você é um assistente especialista em checagem de fatos e um professor.
+      Sua tarefa é analisar o texto fornecido e avaliar se as afirmações contidas nele são verdadeiras ou falsas.
 
-    const userMessage = `
-      A pergunta foi: "${pergunta}"
-      
-      A resposta do aluno foi: "${resposta}"
-      
-      Por favor, avalie esta resposta.
-    `;
+      Siga estritamente estas regras para a sua resposta:
+      1. Leia cada afirmação no texto.
+      2. Para cada afirmação, determine se ela é "Correta", "Incorreta" ou "Parcialmente Correta".
+      3. Se uma afirmação for incorreta ou parcialmente correta, forneça a informação correta e uma breve explicação.
+      4. Apresente o resultado de forma clara e organizada, em formato de lista ou tópicos.
+      5. Ao final de toda a análise, em uma nova linha, escreva "Nota do Aluno:" seguido de uma nota de 0 a 10, que reflete a veracidade geral das afirmações no texto.
+    `; // <-- MUDANÇA REALIZADA AQUI
+
+    const userMessage = `Por favor, analise as afirmações no seguinte texto e verifique sua veracidade: "${texto}"`;
     // --------------------------------------------------------
 
     const completion = await openai.chat.completions.create({
@@ -47,12 +39,12 @@ export default async function handler(req, res) {
         { role: "system", content: systemMessage },
         { role: "user", content: userMessage }
       ],
-      temperature: 0.3, 
+      temperature: 0.1,
     });
 
-    const correcaoCompleta = completion.choices[0].message.content;
+    const analiseCompleta = completion.choices[0].message.content;
 
-    res.status(200).json({ resultado: correcaoCompleta });
+    res.status(200).json({ resultado: analiseCompleta });
 
   } catch (error) {
     console.error('Erro na API da OpenAI:', error);
