@@ -11,28 +11,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- MUDANÇA AQUI ---
-    // Agora recebemos apenas um campo "texto" do frontend.
-    const { texto } = req.body;
+    // --- MUDANÇA AQUI: Voltamos a esperar "pergunta" e "resposta" ---
+    const { pergunta, resposta } = req.body;
 
-    // Validação para o novo campo "texto".
-    if (!texto || texto.trim() === '') {
-      return res.status(400).json({ error: 'O campo "texto" não pode estar vazio.' });
+    // Validação para os dois campos
+    if (!pergunta || !resposta) {
+      return res.status(400).json({ error: 'Os campos "pergunta" e "resposta" são obrigatórios.' });
     }
 
-    // --- NOVO PROMPT ---
-    // Instruímos a IA a ser um revisor geral.
+    // --- PROMPT DE CORREÇÃO DE PROVA ---
+    // Instruímos a IA a comparar a resposta com a pergunta.
     const systemMessage = `
-      Você é um assistente de escrita e um revisor especialista. 
-      Sua tarefa é analisar o texto fornecido, identificar e corrigir quaisquer erros gramaticais, ortográficos ou factuais.
-      Seu objetivo é melhorar a clareza e a precisão do texto.
-
-      Forneça uma resposta estruturada:
-      1. Apresente o texto corrigido e aprimorado.
-      2. Em seguida, adicione uma seção chamada "Principais Alterações" e liste de forma breve (em tópicos) as correções mais importantes que você fez.
+      Você é um professor assistente especialista em avaliação de provas.
+      Sua função é analisar a resposta de um aluno com base na pergunta fornecida.
+      
+      Siga estas regras na sua correção:
+      1. Compare a resposta do aluno com o que era esperado pela pergunta.
+      2. Aponte os acertos e os erros de forma clara e construtiva.
+      3. Forneça a informação correta caso a resposta esteja errada ou incompleta.
+      4. No final, em uma nova linha, escreva "Nota:" seguido de uma nota de 0 a 10, que reflita o quão bem a resposta atende à pergunta.
     `;
 
-    const userMessage = `Por favor, revise e corrija o seguinte texto: "${texto}"`;
+    const userMessage = `
+      A pergunta foi: "${pergunta}"
+      
+      A resposta do aluno foi: "${resposta}"
+      
+      Por favor, avalie esta resposta.
+    `;
     // --------------------------------------------------------
 
     const completion = await openai.chat.completions.create({
@@ -41,7 +47,7 @@ export default async function handler(req, res) {
         { role: "system", content: systemMessage },
         { role: "user", content: userMessage }
       ],
-      temperature: 0.2, // Temperatura muito baixa para focar em correções precisas.
+      temperature: 0.3, 
     });
 
     const correcaoCompleta = completion.choices[0].message.content;
