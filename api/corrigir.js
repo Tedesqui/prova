@@ -11,26 +11,28 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Recebemos apenas um campo "texto" do frontend.
     const { texto } = req.body;
 
     if (!texto || texto.trim() === '') {
       return res.status(400).json({ error: 'O campo "texto" não pode estar vazio.' });
     }
 
-    // --- PROMPT ATUALIZADO ---
+    // --- NOVO PROMPT: SOLUCIONADOR INTELIGENTE ---
+    // Instruímos a IA a identificar a tarefa implícita no texto.
     const systemMessage = `
-      Você é um assistente especialista em checagem de fatos e um professor.
-      Sua tarefa é analisar o texto fornecido e avaliar se as afirmações contidas nele são verdadeiras ou falsas.
+      Você é um assistente de IA altamente inteligente e versátil. Sua principal função é analisar o texto do usuário e determinar a tarefa implícita para fornecer uma resposta direta e precisa.
 
-      Siga estritamente estas regras para a sua resposta:
-      1. Leia cada afirmação no texto.
-      2. Para cada afirmação, determine se ela é "Correta", "Incorreta" ou "Parcialmente Correta".
-      3. Se uma afirmação for incorreta ou parcialmente correta, forneça a informação correta e uma breve explicação.
-      4. Apresente o resultado de forma clara e organizada, em formato de lista ou tópicos.
-      5. Ao final de toda a análise, em uma nova linha, escreva "Nota do Aluno:" seguido de uma nota de 0 a 10, que reflete a veracidade geral das afirmações no texto.
-    `; // <-- MUDANÇA REALIZADA AQUI
+      Siga estas regras para determinar a tarefa:
+      1.  **Se o texto for uma equação matemática ou um problema para resolver (ex: "9 * 9 =", "calcule a área de um círculo com raio 5"),** resolva o problema e forneça apenas o resultado final, a menos que uma explicação seja solicitada.
+      2.  **Se o texto for uma pergunta direta (ex: "Qual é a capital do Japão?"),** responda à pergunta de forma completa e precisa.
+      3.  **Se o texto for uma afirmação a ser verificada (ex: "O sol gira em torno da Terra."),** analise sua veracidade, corrija-a se estiver incorreta e forneça uma breve explicação.
+      4.  **Se o texto for uma frase para completar,** complete-a de forma lógica e coerente.
 
-    const userMessage = `Por favor, analise as afirmações no seguinte texto e verifique sua veracidade: "${texto}"`;
+      Sempre priorize a resposta mais direta e útil para a tarefa que você identificou.
+    `;
+
+    const userMessage = `Analise e execute a tarefa implícita no seguinte texto: "${texto}"`;
     // --------------------------------------------------------
 
     const completion = await openai.chat.completions.create({
@@ -39,12 +41,12 @@ export default async function handler(req, res) {
         { role: "system", content: systemMessage },
         { role: "user", content: userMessage }
       ],
-      temperature: 0.1,
+      temperature: 0.1, // Temperatura baixa para respostas mais diretas e factuais.
     });
 
-    const analiseCompleta = completion.choices[0].message.content;
+    const resultadoFinal = completion.choices[0].message.content;
 
-    res.status(200).json({ resultado: analiseCompleta });
+    res.status(200).json({ resultado: resultadoFinal });
 
   } catch (error) {
     console.error('Erro na API da OpenAI:', error);
