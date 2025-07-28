@@ -9,7 +9,16 @@
         video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
         canvas { display: none; }
         #ui-container { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 2; }
-        #controls { display: flex; gap: 15px; justify-content: center; padding: 20px; background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0)); }
+        
+        #controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center; /* <-- ADICIONE ESTA LINHA PARA ALINHAR OS BOTÕES VERTICALMENTE */
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
+        }
+        
         button { padding: 12px 20px; font-size: 16px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         button:hover:not(:disabled) { background-color: #0056b3; transform: translateY(-2px); }
         button:disabled { background: #555; cursor: not-allowed; opacity: 0.7; }
@@ -50,7 +59,7 @@
         function toggleZoom() { if (!mediaTrack) return; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; if (currentZoom > capabilities.zoom.max) currentZoom = zoomLevels[0]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
         function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para o texto e capture.</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
         function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = 'Iniciar Novamente'; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
-        async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem (AWS Textract)...</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`; addRetryButton(resetUI); } }
+        async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem...</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`; addRetryButton(resetUI); } }
         
         function showConfirmationView(ocrText) {
             const html = `
