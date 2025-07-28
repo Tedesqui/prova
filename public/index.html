@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Analisador de Afirmações com Câmera e IA</title>
+    <title>Corrretor de Prova com IA (Projeto de Jean Tedesqui)</title>
     <style>
         body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: black; color: white; overflow: hidden; }
         video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
@@ -30,7 +30,7 @@
     <div id="ui-container">
         <div id="controls">
             <button id="zoomBtn">🔍 Zoom: 1x</button>
-            <button id="captureBtn">📷 Analisar Texto</button>
+            <button id="captureBtn">📷 Corrigir Questões</button>
         </div>
         <div id="output-panel">
             <div id="status-text">📷 Aponte a câmera para o texto e capture.</div>
@@ -59,7 +59,7 @@
                     <textarea id="text-to-correct">${ocrText}</textarea>
                     <div id="confirmation-controls">
                         <button id="retryBtn" class="secondary">Capturar Novamente</button>
-                        <button id="sendBtn" class="confirm">Analisar Afirmações</button>
+                        <button id="sendBtn" class="confirm">Corrigir</button>
                     </div>
                 </div>`;
             outputPanel.innerHTML = html;
