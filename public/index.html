@@ -3,154 +3,40 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PROJETO DE JEAN TEDESQUI - Corretor com Câmera e IA</title>
+    <title>Corretor de Texto com Câmera e IA</title>
     <style>
-        /* Estilos para uma interface moderna e funcional */
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: black;
-            color: white;
-            overflow: hidden;
-        }
-
-        video, canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            object-fit: cover;
-            z-index: 0;
-        }
-
-        canvas {
-            display: none;
-        }
-
-        #ui-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            z-index: 2;
-        }
-
-        #controls {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            padding: 20px;
-            background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
-        }
-
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-
-        button:hover:not(:disabled) {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        button:disabled {
-            background: #555;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        #output-panel {
-            background: rgba(0,0,0,0.9);
-            padding: 15px;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-sizing: border-box;
-            border-top: 1px solid #444;
-        }
-
-        #confirmation-view {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        #confirmation-view p {
-            margin: 0;
-            font-size: 0.9em;
-            color: #ccc;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 80px;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            border-radius: 6px;
-            color: white;
-            font-size: 1em;
-            padding: 10px;
-            box-sizing: border-box;
-            resize: vertical;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: #007bff;
-        }
-
-        #confirmation-controls {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        #confirmation-controls button.confirm {
-            background-color: #28a745;
-        }
-
-        #confirmation-controls button.secondary {
-            background-color: #6c757d;
-        }
-
-        pre#correction-result {
-            background-color: #2a2a2a;
-            padding: 1rem;
-            border-radius: 6px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            line-height: 1.6;
-        }
+        body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: black; color: white; overflow: hidden; }
+        video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
+        canvas { display: none; }
+        #ui-container { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 2; }
+        #controls { display: flex; gap: 15px; justify-content: center; padding: 20px; background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0)); }
+        button { padding: 12px 20px; font-size: 16px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        button:hover:not(:disabled) { background-color: #0056b3; transform: translateY(-2px); }
+        button:disabled { background: #555; cursor: not-allowed; opacity: 0.7; }
+        #output-panel { background: rgba(0,0,0,0.9); padding: 15px; max-height: 85vh; overflow-y: auto; box-sizing: border-box; border-top: 1px solid #444; }
+        #confirmation-view { display: flex; flex-direction: column; gap: 15px; }
+        #confirmation-view p { margin: 0; font-size: 0.9em; color: #ccc; }
+        textarea { width: 100%; min-height: 120px; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: white; font-size: 1em; padding: 10px; box-sizing: border-box; resize: vertical; }
+        textarea:focus { outline: none; border-color: #007bff; }
+        #confirmation-controls { display: flex; gap: 10px; justify-content: flex-end; }
+        #confirmation-controls button.confirm { background-color: #28a745; }
+        #confirmation-controls button.secondary { background-color: #6c757d; }
+        pre#correction-result { background-color: #2a2a2a; padding: 1rem; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
     </style>
 </head>
 <body>
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
-
     <div id="ui-container">
         <div id="controls">
             <button id="zoomBtn">🔍 Zoom: 1x</button>
-            <button id="captureBtn">📷 Ler Texto da Resposta</button>
+            <button id="captureBtn">📷 Ler Texto</button>
         </div>
         <div id="output-panel">
-            <div id="status-text">📷 Aponte a câmera para a resposta e capture.</div>
+            <div id="status-text">📷 Aponte a câmera para o texto e capture.</div>
         </div>
     </div>
-
     <script>
-        // --- Seleção de Elementos da UI ---
         const video = document.getElementById("video");
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
@@ -158,79 +44,13 @@
         const controlsDiv = document.getElementById("controls");
         const zoomBtn = document.getElementById("zoomBtn");
         const captureBtn = document.getElementById("captureBtn");
-        
-        // --- Variáveis de Controle ---
-        let mediaTrack;
-        let currentZoom = 1;
+        let mediaTrack, currentZoom = 1;
         const zoomLevels = [1, 1.5, 2, 3];
-
-        // --- Funções Principais ---
-
-        /**
-         * Inicia a câmera traseira do dispositivo.
-         */
-        async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { exact: "environment" },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
-                });
-                video.srcObject = stream;
-                mediaTrack = stream.getVideoTracks()[0];
-                const zoomCapabilities = mediaTrack.getCapabilities().zoom;
-                if (!zoomCapabilities) {
-                    zoomBtn.disabled = true;
-                    zoomBtn.innerText = "Zoom N/A";
-                }
-            } catch (err) {
-                console.error("Erro ao iniciar a câmera:", err);
-                outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera. Verifique as permissões.</div>`;
-            }
-        }
-
-        /**
-         * Alterna os níveis de zoom da câmera.
-         */
-        function toggleZoom() {
-            if (!mediaTrack) return;
-            const currentIndex = zoomLevels.indexOf(currentZoom);
-            currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length];
-            mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] });
-            zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`;
-        }
-
-        /**
-         * Reseta a interface para o estado inicial da câmera.
-         */
-        function resetUI() {
-            canvas.style.display = 'none';
-            video.style.display = 'block';
-            outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para a resposta e capture.</div>`;
-            controlsDiv.style.display = 'flex';
-            captureBtn.disabled = false;
-        }
+        async function startCamera() { try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } } }); video.srcObject = stream; mediaTrack = stream.getVideoTracks()[0]; const zoomCapabilities = mediaTrack.getCapabilities().zoom; if (!zoomCapabilities) { zoomBtn.disabled = true; zoomBtn.innerText = "Zoom N/A"; } } catch (err) { console.error("Erro ao iniciar a câmera:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera.</div>`; } }
+        function toggleZoom() { if (!mediaTrack) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
+        function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para o texto e capture.</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
+        function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = 'Iniciar Nova Correção'; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
         
-        /**
-         * Adiciona um botão para reiniciar o processo.
-         */
-        function addRetryButton(action) {
-            const existingButton = outputPanel.querySelector('.retry-button-bottom');
-            if (existingButton) return; // Evita adicionar múltiplos botões
-
-            const restartBtn = document.createElement('button');
-            restartBtn.innerText = 'Iniciar Nova Correção';
-            restartBtn.className = 'retry-button-bottom';
-            restartBtn.style.marginTop = '15px';
-            restartBtn.addEventListener('click', action);
-            outputPanel.appendChild(restartBtn);
-        }
-
-        /**
-         * Captura imagem, chama a API de OCR (/api/read-text-aws) e avança para a confirmação.
-         */
         async function captureAndRecognize() {
             captureBtn.disabled = true;
             canvas.width = video.videoWidth;
@@ -240,97 +60,64 @@
             canvas.style.display = 'block';
             controlsDiv.style.display = 'none';
             outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem (AWS Textract)...</div>`;
-
             try {
                 const imageDataUrl = canvas.toDataURL('image/jpeg');
-                
-                // Chamada para a API do AWS Textract
-                const response = await fetch("/api/read-text-aws", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ image: imageDataUrl })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `Erro no servidor de OCR: ${response.status}`);
-                }
-                
+                const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) });
+                if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); }
                 const data = await response.json();
                 showConfirmationView(data.text.trim());
-
             } catch (err) {
-                console.error("Erro no reconhecimento de texto:", err);
+                console.error("Erro no OCR:", err);
                 outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`;
                 addRetryButton(resetUI);
             }
         }
 
-        /**
-         * Mostra a tela de confirmação, pedindo a pergunta e a resposta.
-         */
+        // --- FUNÇÃO ADAPTADA ---
+        // Mostra a tela de confirmação apenas com o texto extraído.
         function showConfirmationView(ocrText) {
-            const confirmationHTML = `
+            const html = `
                 <div id="confirmation-view">
-                    <p><strong>1. Digite a pergunta correspondente:</strong></p>
-                    <textarea id="question-area" placeholder="Qual era a pergunta da prova?"></textarea>
-                    
-                    <p><strong>2. Revise o texto da resposta (extraído da imagem):</strong></p>
-                    <textarea id="answer-area">${ocrText}</textarea>
-                    
+                    <p><strong>Revise o texto extraído da imagem (edite se necessário):</strong></p>
+                    <textarea id="text-to-correct">${ocrText}</textarea>
                     <div id="confirmation-controls">
                         <button id="retryBtn" class="secondary">Capturar Novamente</button>
-                        <button id="sendBtn" class="confirm">Enviar para Correção</button>
+                        <button id="sendBtn" class="confirm">Revisar Texto</button>
                     </div>
-                </div>
-            `;
-            outputPanel.innerHTML = confirmationHTML;
+                </div>`;
+            outputPanel.innerHTML = html;
             document.getElementById('retryBtn').addEventListener('click', resetUI);
             document.getElementById('sendBtn').addEventListener('click', sendForCorrection);
         }
         
-        /**
-         * Envia a pergunta e a resposta para a API de correção (/api/corrigir).
-         */
+        // --- FUNÇÃO ADAPTADA ---
+        // Envia apenas o texto para a API de correção.
         async function sendForCorrection() {
-            const question = document.getElementById('question-area').value;
-            const answer = document.getElementById('answer-area').value;
+            const textToCorrect = document.getElementById('text-to-correct').value;
 
-            if (!question.trim() || !answer.trim()) {
-                alert('Por favor, preencha a pergunta e verifique se a resposta não está vazia.');
+            if (!textToCorrect.trim()) {
+                alert('O campo de texto não pode estar vazio.');
                 return;
             }
-
             outputPanel.innerHTML = `<div id="status-text">🤖 Enviando para a IA (OpenAI)...</div>`;
-            
             try {
-                // Chamada para a API da OpenAI
                 const response = await fetch("/api/corrigir", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ pergunta: question, resposta: answer }) // Envia os dois campos
+                    // Envia apenas o campo "texto".
+                    body: JSON.stringify({ texto: textToCorrect })
                 });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `Erro na correção: ${response.status}`);
-                }
-                
+                if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro na correção: ${response.status}`); }
                 const data = await response.json();
-                outputPanel.innerHTML = `
-                    <h2>✅ Correção Concluída</h2>
-                    <pre id="correction-result">${data.resultado}</pre>
-                `;
+                outputPanel.innerHTML = `<h2>✅ Revisão Concluída</h2><pre id="correction-result">${data.resultado}</pre>`;
             } catch (err) {
                 console.error("Erro na correção:", err);
                 outputPanel.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`;
             } finally {
-                // Sempre adiciona o botão de reiniciar ao final
                 addRetryButton(resetUI);
             }
         }
 
-        // --- Inicialização ---
         zoomBtn.addEventListener('click', toggleZoom);
         captureBtn.addEventListener('click', captureAndRecognize);
         startCamera();
