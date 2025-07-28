@@ -1,11 +1,14 @@
 {
-    "name": "indicacao-backend-com-foto",
-    "version": "1.0.0",
-    "main": "api/send-email.js",
-    "dependencies": {
-        "cors": "^2.8.5",
-        "express": "^4.18.2",
-        "multer": "^1.4.5-lts.1",
-        "nodemailer": "^6.9.7"
-    }
+  "name": "corretor-aws-openai",
+  "version": "1.0.0",
+  "description": "Backend com AWS Textract e OpenAI para Vercel",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-textract": "^3.592.0",
+    "openai": "^4.0.0"
+  }
 }
