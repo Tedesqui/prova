@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PROJETO DE JEAN TEDESQUI - Corretor com Câmera e IA</title>
+    <title>Analisador de Afirmações com Câmera e IA</title>
     <style>
         body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: black; color: white; overflow: hidden; }
         video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
@@ -16,7 +16,7 @@
         #output-panel { background: rgba(0,0,0,0.9); padding: 15px; max-height: 85vh; overflow-y: auto; box-sizing: border-box; border-top: 1px solid #444; }
         #confirmation-view { display: flex; flex-direction: column; gap: 15px; }
         #confirmation-view p { margin: 0; font-size: 0.9em; color: #ccc; }
-        textarea { width: 100%; min-height: 80px; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: white; font-size: 1em; padding: 10px; box-sizing: border-box; resize: vertical; }
+        textarea { width: 100%; min-height: 120px; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: white; font-size: 1em; padding: 10px; box-sizing: border-box; resize: vertical; }
         textarea:focus { outline: none; border-color: #007bff; }
         #confirmation-controls { display: flex; gap: 10px; justify-content: flex-end; }
         #confirmation-controls button.confirm { background-color: #28a745; }
@@ -30,10 +30,10 @@
     <div id="ui-container">
         <div id="controls">
             <button id="zoomBtn">🔍 Zoom: 1x</button>
-            <button id="captureBtn">📷 Ler Texto da Resposta</button>
+            <button id="captureBtn">📷 Analisar Texto</button>
         </div>
         <div id="output-panel">
-            <div id="status-text">📷 Aponte a câmera para a resposta e capture.</div>
+            <div id="status-text">📷 Aponte a câmera para o texto e capture.</div>
         </div>
     </div>
     <script>
@@ -46,46 +46,51 @@
         const captureBtn = document.getElementById("captureBtn");
         let mediaTrack, currentZoom = 1;
         const zoomLevels = [1, 1.5, 2, 3];
-
-        async function startCamera() {
-            try {
-                // --- CÓDIGO MAIS ROBUSTO E FLEXÍVEL ---
-                const constraints = {
-                    video: {
-                        // Pede a câmera traseira, mas não exige. Se não tiver, usa a frontal.
-                        facingMode: { ideal: "environment" }, 
-                        // Pede uma resolução HD, que é mais comum em webcams.
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                // ----------------------------------------
-                
-                video.srcObject = stream;
-                mediaTrack = stream.getVideoTracks()[0];
-                const capabilities = mediaTrack.getCapabilities();
-                // Esconde o botão de zoom se a câmera não tiver esse recurso
-                if (!capabilities.zoom || capabilities.zoom.max <= 1) {
-                    zoomBtn.style.display = 'none';
-                }
-            } catch (err) {
-                console.error("Erro ao iniciar a câmera:", err);
-                if (err.name === "OverconstrainedError") {
-                    outputPanel.innerHTML = `<div id="status-text">❌ Erro: Nenhuma câmera encontrada com as especificações mínimas.</div>`;
-                } else {
-                    outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera. Verifique as permissões do navegador.</div>`;
-                }
-            }
+        async function startCamera() { try { const constraints = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); video.srcObject = stream; mediaTrack = stream.getVideoTracks()[0]; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom || capabilities.zoom.max <= 1) { zoomBtn.style.display = 'none'; } } catch (err) { console.error("Erro ao iniciar a câmera:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera.</div>`; } }
+        function toggleZoom() { if (!mediaTrack) return; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; if (currentZoom > capabilities.zoom.max) currentZoom = zoomLevels[0]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
+        function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para o texto e capture.</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
+        function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = 'Iniciar Nova Análise'; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
+        async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem (AWS Textract)...</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`; addRetryButton(resetUI); } }
+        
+        function showConfirmationView(ocrText) {
+            const html = `
+                <div id="confirmation-view">
+                    <p><strong>Revise o texto extraído (edite se necessário):</strong></p>
+                    <textarea id="text-to-correct">${ocrText}</textarea>
+                    <div id="confirmation-controls">
+                        <button id="retryBtn" class="secondary">Capturar Novamente</button>
+                        <button id="sendBtn" class="confirm">Analisar Afirmações</button>
+                    </div>
+                </div>`;
+            outputPanel.innerHTML = html;
+            document.getElementById('retryBtn').addEventListener('click', resetUI);
+            document.getElementById('sendBtn').addEventListener('click', sendForCorrection);
         }
         
-        function toggleZoom() { if (!mediaTrack) return; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; if (currentZoom > capabilities.zoom.max) currentZoom = zoomLevels[0]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
-        function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para a resposta e capture.</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
-        function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = 'Iniciar Nova Correção'; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
-        async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem (AWS Textract)...</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`; addRetryButton(resetUI); } }
-        function showConfirmationView(ocrText) { const html = `<div id="confirmation-view"><p><strong>1. Digite a pergunta correspondente:</strong></p><textarea id="question-area" placeholder="Qual era a pergunta da prova?"></textarea><p><strong>2. Revise o texto da resposta (extraído da imagem):</strong></p><textarea id="answer-area">${ocrText}</textarea><div id="confirmation-controls"><button id="retryBtn" class="secondary">Capturar Novamente</button><button id="sendBtn" class="confirm">Enviar para Correção</button></div></div>`; outputPanel.innerHTML = html; document.getElementById('retryBtn').addEventListener('click', resetUI); document.getElementById('sendBtn').addEventListener('click', sendForCorrection); }
-        async function sendForCorrection() { const question = document.getElementById('question-area').value; const answer = document.getElementById('answer-area').value; if (!question.trim() || !answer.trim()) { alert('Por favor, preencha a pergunta e verifique se a resposta não está vazia.'); return; } outputPanel.innerHTML = `<div id="status-text">🤖 Enviando para a IA (OpenAI)...</div>`; try { const response = await fetch("/api/corrigir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pergunta: question, resposta: answer }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro na correção: ${response.status}`); } const data = await response.json(); outputPanel.innerHTML = `<h2>✅ Correção Concluída</h2><pre id="correction-result">${data.resultado}</pre>`; } catch (err) { console.error("Erro na correção:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`; } finally { addRetryButton(resetUI); } }
-        
+        async function sendForCorrection() {
+            const textToCorrect = document.getElementById('text-to-correct').value;
+            if (!textToCorrect.trim()) {
+                alert('O campo de texto não pode estar vazio.');
+                return;
+            }
+            outputPanel.innerHTML = `<div id="status-text">🤖 Analisando afirmações com a IA...</div>`;
+            try {
+                const response = await fetch("/api/corrigir", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ texto: textToCorrect })
+                });
+                if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro na análise: ${response.status}`); }
+                const data = await response.json();
+                outputPanel.innerHTML = `<h2>✅ Análise Concluída</h2><pre id="correction-result">${data.resultado}</pre>`;
+            } catch (err) {
+                console.error("Erro na análise:", err);
+                outputPanel.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`;
+            } finally {
+                addRetryButton(resetUI);
+            }
+        }
+
         zoomBtn.addEventListener('click', toggleZoom);
         captureBtn.addEventListener('click', captureAndRecognize);
         startCamera();
