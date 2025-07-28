@@ -14,29 +14,12 @@
             display: flex;
             gap: 15px;
             justify-content: center;
-            align-items: center; 
+            align-items: center; /* <-- ADICIONE ESTA LINHA PARA ALINHAR OS BOTÕES VERTICALMENTE */
             padding: 20px;
             background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
         }
         
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center; /* Garante que o conteúdo interno do botão fique centrado */
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            min-width: 180px; /* <-- ADICIONE ESTA LINHA PARA FIXAR A LARGURA MÍNIMA */
-        }
-
+        button { padding: 12px 20px; font-size: 16px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         button:hover:not(:disabled) { background-color: #0056b3; transform: translateY(-2px); }
         button:disabled { background: #555; cursor: not-allowed; opacity: 0.7; }
         #output-panel { background: rgba(0,0,0,0.9); padding: 15px; max-height: 85vh; overflow-y: auto; box-sizing: border-box; border-top: 1px solid #444; }
