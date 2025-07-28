@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 
-// Configura o cliente da OpenAI
+// Configura o cliente da OpenAI com a chave da Vercel Environment Variables
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -11,13 +11,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { pergunta, resposta } = req.body;
-    if (!pergunta || !resposta) {
-      return res.status(400).json({ error: 'Os campos "pergunta" e "resposta" são obrigatórios.' });
+    // --- MUDANÇA AQUI ---
+    // Agora recebemos apenas um campo "texto" do frontend.
+    const { texto } = req.body;
+
+    // Validação para o novo campo "texto".
+    if (!texto || texto.trim() === '') {
+      return res.status(400).json({ error: 'O campo "texto" não pode estar vazio.' });
     }
 
-    const systemMessage = `Você é um professor assistente. Sua função é analisar a resposta de um aluno para uma pergunta, usando seu conhecimento para julgar a correção. Forneça um feedback construtivo e, no final, em uma nova linha, escreva "Nota:" seguido de uma nota de 0 a 10.`;
-    const userMessage = `Pergunta: "${pergunta}"\n\nResposta do Aluno: "${resposta}"\n\nAvalie esta resposta.`;
+    // --- NOVO PROMPT ---
+    // Instruímos a IA a ser um revisor geral.
+    const systemMessage = `
+      Você é um assistente de escrita e um revisor especialista. 
+      Sua tarefa é analisar o texto fornecido, identificar e corrigir quaisquer erros gramaticais, ortográficos ou factuais.
+      Seu objetivo é melhorar a clareza e a precisão do texto.
+
+      Forneça uma resposta estruturada:
+      1. Apresente o texto corrigido e aprimorado.
+      2. Em seguida, adicione uma seção chamada "Principais Alterações" e liste de forma breve (em tópicos) as correções mais importantes que você fez.
+    `;
+
+    const userMessage = `Por favor, revise e corrija o seguinte texto: "${texto}"`;
+    // --------------------------------------------------------
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -25,12 +41,13 @@ export default async function handler(req, res) {
         { role: "system", content: systemMessage },
         { role: "user", content: userMessage }
       ],
-      temperature: 0.3,
+      temperature: 0.2, // Temperatura muito baixa para focar em correções precisas.
     });
 
     const correcaoCompleta = completion.choices[0].message.content;
 
     res.status(200).json({ resultado: correcaoCompleta });
+
   } catch (error) {
     console.error('Erro na API da OpenAI:', error);
     res.status(500).json({ error: 'Falha ao se comunicar com a IA da OpenAI.' });
