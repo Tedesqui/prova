@@ -46,68 +46,46 @@
         const captureBtn = document.getElementById("captureBtn");
         let mediaTrack, currentZoom = 1;
         const zoomLevels = [1, 1.5, 2, 3];
-        async function startCamera() { try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } } }); video.srcObject = stream; mediaTrack = stream.getVideoTracks()[0]; const zoomCapabilities = mediaTrack.getCapabilities().zoom; if (!zoomCapabilities) { zoomBtn.disabled = true; zoomBtn.innerText = "Zoom N/A"; } } catch (err) { console.error("Erro ao iniciar a câmera:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera.</div>`; } }
-        function toggleZoom() { if (!mediaTrack) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
+
+        async function startCamera() {
+            try {
+                // --- CÓDIGO MAIS ROBUSTO E FLEXÍVEL ---
+                const constraints = {
+                    video: {
+                        // Pede a câmera traseira, mas não exige. Se não tiver, usa a frontal.
+                        facingMode: { ideal: "environment" }, 
+                        // Pede uma resolução HD, que é mais comum em webcams.
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                // ----------------------------------------
+                
+                video.srcObject = stream;
+                mediaTrack = stream.getVideoTracks()[0];
+                const capabilities = mediaTrack.getCapabilities();
+                // Esconde o botão de zoom se a câmera não tiver esse recurso
+                if (!capabilities.zoom || capabilities.zoom.max <= 1) {
+                    zoomBtn.style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Erro ao iniciar a câmera:", err);
+                if (err.name === "OverconstrainedError") {
+                    outputPanel.innerHTML = `<div id="status-text">❌ Erro: Nenhuma câmera encontrada com as especificações mínimas.</div>`;
+                } else {
+                    outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera. Verifique as permissões do navegador.</div>`;
+                }
+            }
+        }
+        
+        function toggleZoom() { if (!mediaTrack) return; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; if (currentZoom > capabilities.zoom.max) currentZoom = zoomLevels[0]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
         function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para a resposta e capture.</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
         function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = 'Iniciar Nova Correção'; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
         async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem (AWS Textract)...</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`; addRetryButton(resetUI); } }
+        function showConfirmationView(ocrText) { const html = `<div id="confirmation-view"><p><strong>1. Digite a pergunta correspondente:</strong></p><textarea id="question-area" placeholder="Qual era a pergunta da prova?"></textarea><p><strong>2. Revise o texto da resposta (extraído da imagem):</strong></p><textarea id="answer-area">${ocrText}</textarea><div id="confirmation-controls"><button id="retryBtn" class="secondary">Capturar Novamente</button><button id="sendBtn" class="confirm">Enviar para Correção</button></div></div>`; outputPanel.innerHTML = html; document.getElementById('retryBtn').addEventListener('click', resetUI); document.getElementById('sendBtn').addEventListener('click', sendForCorrection); }
+        async function sendForCorrection() { const question = document.getElementById('question-area').value; const answer = document.getElementById('answer-area').value; if (!question.trim() || !answer.trim()) { alert('Por favor, preencha a pergunta e verifique se a resposta não está vazia.'); return; } outputPanel.innerHTML = `<div id="status-text">🤖 Enviando para a IA (OpenAI)...</div>`; try { const response = await fetch("/api/corrigir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pergunta: question, resposta: answer }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro na correção: ${response.status}`); } const data = await response.json(); outputPanel.innerHTML = `<h2>✅ Correção Concluída</h2><pre id="correction-result">${data.resultado}</pre>`; } catch (err) { console.error("Erro na correção:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`; } finally { addRetryButton(resetUI); } }
         
-        // --- FUNÇÃO ADAPTADA ---
-        // Mostra a tela de confirmação com um campo para a PERGUNTA.
-        function showConfirmationView(ocrText) {
-            const html = `
-                <div id="confirmation-view">
-                    <p><strong>1. Digite a pergunta correspondente:</strong></p>
-                    <textarea id="question-area" placeholder="Qual era a pergunta da prova?"></textarea>
-                    
-                    <p><strong>2. Revise o texto da resposta (extraído da imagem):</strong></p>
-                    <textarea id="answer-area">${ocrText}</textarea>
-                    
-                    <div id="confirmation-controls">
-                        <button id="retryBtn" class="secondary">Capturar Novamente</button>
-                        <button id="sendBtn" class="confirm">Enviar para Correção</button>
-                    </div>
-                </div>`;
-            outputPanel.innerHTML = html;
-            document.getElementById('retryBtn').addEventListener('click', resetUI);
-            document.getElementById('sendBtn').addEventListener('click', sendForCorrection);
-        }
-        
-        // --- FUNÇÃO ADAPTADA ---
-        // Envia a PERGUNTA e a RESPOSTA para a API de correção.
-        async function sendForCorrection() {
-            const question = document.getElementById('question-area').value;
-            const answer = document.getElementById('answer-area').value;
-
-            if (!question.trim() || !answer.trim()) {
-                alert('Por favor, preencha a pergunta e verifique se a resposta não está vazia.');
-                return;
-            }
-
-            outputPanel.innerHTML = `<div id="status-text">🤖 Enviando para a IA (OpenAI)...</div>`;
-            
-            try {
-                const response = await fetch("/api/corrigir", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    // Envia os dois campos para a API.
-                    body: JSON.stringify({ pergunta: question, resposta: answer }) 
-                });
-
-                if (!response.ok) { 
-                    const err = await response.json(); 
-                    throw new Error(err.error || `Erro na correção: ${response.status}`);
-                }
-                const data = await response.json();
-                outputPanel.innerHTML = `<h2>✅ Correção Concluída</h2><pre id="correction-result">${data.resultado}</pre>`;
-            } catch (err) {
-                console.error("Erro na correção:", err);
-                outputPanel.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`;
-            } finally {
-                addRetryButton(resetUI);
-            }
-        }
-
         zoomBtn.addEventListener('click', toggleZoom);
         captureBtn.addEventListener('click', captureAndRecognize);
         startCamera();
