@@ -1,0 +1,14 @@
+{
+  "name": "corretor-aws-openai",
+  "version": "1.0.0",
+  "description": "Backend com AWS Textract e OpenAI para Vercel",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-textract": "^3.592.0",
+    "openai": "^4.0.0"
+  }
+}
