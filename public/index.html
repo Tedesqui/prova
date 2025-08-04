@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Correção de Prova com IA - Projeto de Jean Tedesqui</title>
+    <title data-key="title">Correção de Prova com IA - Projeto de Jean Tedesqui</title>
     <style>
         body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: black; color: white; overflow: hidden; }
         video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
@@ -14,7 +14,7 @@
             display: flex;
             gap: 15px;
             justify-content: center;
-            align-items: center; /* <-- ADICIONE ESTA LINHA PARA ALINHAR OS BOTÕES VERTICALMENTE */
+            align-items: center;
             padding: 20px;
             background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
         }
@@ -39,10 +39,10 @@
     <div id="ui-container">
         <div id="controls">
             <button id="zoomBtn">🔍 Zoom: 1x</button>
-            <button id="captureBtn">📷 Clique para Corrigir</button>
+            <button id="captureBtn" data-key="capture_button">📷 Clique para Corrigir</button>
         </div>
         <div id="output-panel">
-            <div id="status-text">📷 Aponte a câmera para o texto e capture.</div>
+            <div id="status-text" data-key="status_initial">📷 Aponte a câmera para o texto e capture.</div>
         </div>
     </div>
     <script>
@@ -55,20 +55,84 @@
         const captureBtn = document.getElementById("captureBtn");
         let mediaTrack, currentZoom = 1;
         const zoomLevels = [1, 1.5, 2, 3];
-        async function startCamera() { try { const constraints = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); video.srcObject = stream; mediaTrack = stream.getVideoTracks()[0]; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom || capabilities.zoom.max <= 1) { zoomBtn.style.display = 'none'; } } catch (err) { console.error("Erro ao iniciar a câmera:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao acessar a câmera.</div>`; } }
+
+        // --- LÓGICA DE TRADUÇÃO ---
+        const translations = {
+            "en": {
+                "title": "AI Proof Corrector - Project by Jean Tedesqui",
+                "capture_button": "📷 Click to Correct",
+                "status_initial": "📷 Point the camera at the text and capture.",
+                "status_reading": "🧠 Reading text from the image...",
+                "status_processing": "🤖 Processing with AI...",
+                "status_error_camera": "❌ Error accessing the camera.",
+                "status_error_ocr": "❌ Error reading the text: ",
+                "status_error_api": "❌ Error: ",
+                "confirm_prompt": "<strong>Review the extracted text and click to get the answer:</strong>",
+                "retry_button": "Capture Again",
+                "get_answer_button": "Get Answer",
+                "empty_text_alert": "The text field cannot be empty.",
+                "result_title": "✅ Result"
+            },
+            "es": {
+                "title": "Corrector de Pruebas con IA - Proyecto de Jean Tedesqui",
+                "capture_button": "📷 Clic para Corregir",
+                "status_initial": "📷 Apunta la cámara al texto y captura.",
+                "status_reading": "🧠 Leyendo el texto de la imagen...",
+                "status_processing": "🤖 Procesando con IA...",
+                "status_error_camera": "❌ Error al acceder a la cámara.",
+                "status_error_ocr": "❌ Error al leer el texto: ",
+                "status_error_api": "❌ Error: ",
+                "confirm_prompt": "<strong>Revise el texto extraído y haga clic para obtener la respuesta:</strong>",
+                "retry_button": "Capturar de Nuevo",
+                "get_answer_button": "Obtener Respuesta",
+                "empty_text_alert": "El campo de texto no puede estar vacío.",
+                "result_title": "✅ Resultado"
+            },
+            "pt": {
+                "title": "Correção de Prova com IA - Projeto de Jean Tedesqui",
+                "capture_button": "📷 Clique para Corrigir",
+                "status_initial": "📷 Aponte a câmera para o texto e capture.",
+                "status_reading": "🧠 Lendo o texto da imagem...",
+                "status_processing": "🤖 Processando com a IA...",
+                "status_error_camera": "❌ Erro ao acessar a câmera.",
+                "status_error_ocr": "❌ Erro ao ler o texto: ",
+                "status_error_api": "❌ Erro: ",
+                "confirm_prompt": "<strong>Revise o texto extraído e clique para obter a resposta:</strong>",
+                "retry_button": "Capturar Novamente",
+                "get_answer_button": "Obter Resposta",
+                "empty_text_alert": "O campo de texto não pode estar vazio.",
+                "result_title": "✅ Resultado"
+            }
+        };
+        let currentLang = 'pt';
+
+        function setLanguage(lang) {
+            const langCode = lang.split('-')[0];
+            currentLang = translations[langCode] ? langCode : 'pt';
+            document.documentElement.lang = currentLang;
+            document.querySelectorAll('[data-key]').forEach(element => {
+                const key = element.getAttribute('data-key');
+                if (translations[currentLang][key]) {
+                    element.innerHTML = translations[currentLang][key];
+                }
+            });
+        }
+        // --- FIM DA LÓGICA DE TRADUÇÃO ---
+
+        async function startCamera() { try { const constraints = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); video.srcObject = stream; mediaTrack = stream.getVideoTracks()[0]; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom || capabilities.zoom.max <= 1) { zoomBtn.style.display = 'none'; } } catch (err) { console.error("Erro ao iniciar a câmera:", err); outputPanel.innerHTML = `<div id="status-text">${translations[currentLang].status_error_camera}</div>`; } }
         function toggleZoom() { if (!mediaTrack) return; const capabilities = mediaTrack.getCapabilities(); if (!capabilities.zoom) return; const currentIndex = zoomLevels.indexOf(currentZoom); currentZoom = zoomLevels[(currentIndex + 1) % zoomLevels.length]; if (currentZoom > capabilities.zoom.max) currentZoom = zoomLevels[0]; mediaTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }); zoomBtn.innerText = `🔍 Zoom: ${currentZoom}x`; }
-        function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text">📷 Aponte a câmera para o texto e capture.</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
-        function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = 'Iniciar Novamente'; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
-        async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text">🧠 Lendo o texto da imagem...</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">❌ Erro ao ler o texto: ${err.message}</div>`; addRetryButton(resetUI); } }
+        function resetUI() { canvas.style.display = 'none'; video.style.display = 'block'; outputPanel.innerHTML = `<div id="status-text" data-key="status_initial">${translations[currentLang].status_initial}</div>`; controlsDiv.style.display = 'flex'; captureBtn.disabled = false; }
+        function addRetryButton(action) { const existing = outputPanel.querySelector('.retry-button-bottom'); if (existing) return; const btn = document.createElement('button'); btn.innerText = translations[currentLang].retry_button; btn.className = 'retry-button-bottom'; btn.style.marginTop = '15px'; btn.addEventListener('click', action); outputPanel.appendChild(btn); }
+        async function captureAndRecognize() { captureBtn.disabled = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); video.style.display = 'none'; canvas.style.display = 'block'; controlsDiv.style.display = 'none'; outputPanel.innerHTML = `<div id="status-text" data-key="status_reading">${translations[currentLang].status_reading}</div>`; try { const imageDataUrl = canvas.toDataURL('image/jpeg'); const response = await fetch("/api/read-text-aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: imageDataUrl }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro no OCR: ${response.status}`); } const data = await response.json(); showConfirmationView(data.text.trim()); } catch (err) { console.error("Erro no OCR:", err); outputPanel.innerHTML = `<div id="status-text">${translations[currentLang].status_error_ocr}${err.message}</div>`; addRetryButton(resetUI); } }
         
         function showConfirmationView(ocrText) {
             const html = `
                 <div id="confirmation-view">
-                    <p><strong>Revise o texto extraído e clique para obter a resposta:</strong></p>
+                    <p data-key="confirm_prompt">${translations[currentLang].confirm_prompt}</p>
                     <textarea id="text-to-process">${ocrText}</textarea>
                     <div id="confirmation-controls">
-                        <button id="retryBtn" class="secondary">Capturar Novamente</button>
-                        <button id="sendBtn" class="confirm">Obter Resposta</button>
+                        <button id="retryBtn" class="secondary" data-key="retry_button">${translations[currentLang].retry_button}</button>
+                        <button id="sendBtn" class="confirm" data-key="get_answer_button">${translations[currentLang].get_answer_button}</button>
                     </div>
                 </div>`;
             outputPanel.innerHTML = html;
@@ -79,22 +143,22 @@
         async function sendForCorrection() {
             const textToProcess = document.getElementById('text-to-process').value;
             if (!textToProcess.trim()) {
-                alert('O campo de texto não pode estar vazio.');
+                alert(translations[currentLang].empty_text_alert);
                 return;
             }
-            outputPanel.innerHTML = `<div id="status-text">🤖 Processando com a IA...</div>`;
+            outputPanel.innerHTML = `<div id="status-text" data-key="status_processing">${translations[currentLang].status_processing}</div>`;
             try {
                 const response = await fetch("/api/corrigir", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ texto: textToProcess })
+                    body: JSON.stringify({ texto: textToProcess, language: currentLang }) // Envia o idioma para o backend
                 });
                 if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Erro na API: ${response.status}`); }
                 const data = await response.json();
-                outputPanel.innerHTML = `<h2>✅ Resultado</h2><pre id="correction-result">${data.resultado}</pre>`;
+                outputPanel.innerHTML = `<h2 data-key="result_title">${translations[currentLang].result_title}</h2><pre id="correction-result">${data.resultado}</pre>`;
             } catch (err) {
                 console.error("Erro na requisição:", err);
-                outputPanel.innerHTML = `<div id="status-text">❌ Erro: ${err.message}</div>`;
+                outputPanel.innerHTML = `<div id="status-text">${translations[currentLang].status_error_api}${err.message}</div>`;
             } finally {
                 addRetryButton(resetUI);
             }
@@ -102,7 +166,12 @@
 
         zoomBtn.addEventListener('click', toggleZoom);
         captureBtn.addEventListener('click', captureAndRecognize);
-        startCamera();
+        
+        // Inicia a câmera e define o idioma ao carregar a página
+        window.addEventListener('load', () => {
+            setLanguage(navigator.language || navigator.userLanguage);
+            startCamera();
+        });
     </script>
 </body>
 </html>
